@@ -7,10 +7,11 @@
 <link rel="stylesheet" href="../style.css">
 <style>
 #rows{display:flex;flex-direction:column;gap:6px}
-.r{display:flex;gap:6px;align-items:center}
-.t{width:40px;height:40px;display:grid;place-items:center;border:2px solid var(--line);border-radius:6px;font-weight:700;text-transform:uppercase;background:var(--card);cursor:pointer;user-select:none}
-.t.no,.k.no{opacity:.3;text-decoration:line-through}
-.r .s{min-width:80px;font-weight:600;padding-left:6px}
+.r{display:flex;gap:6px;justify-content:center}
+.t{width:min(12vw,46px);aspect-ratio:1;display:grid;place-items:center;border:2px solid var(--line);border-radius:6px;font-weight:700;font-size:1.3rem;text-transform:uppercase;background:var(--card)}
+.ok{background:#3c9a4f!important;border-color:#3c9a4f!important;color:#fff!important}
+.in{background:#d4a72c!important;border-color:#d4a72c!important;color:#fff!important}
+.no{background:#7a7a80!important;border-color:#7a7a80!important;color:#fff!important}
 #kb{display:flex;flex-direction:column;gap:6px;margin-top:12px;width:min(96vw,480px)}
 #kb div{display:flex;gap:4px;justify-content:center}
 .k{flex:1;padding:12px 0;text-transform:uppercase;font-weight:600;min-width:0}
@@ -18,22 +19,25 @@
 </style>
 </head>
 <body>
-<header><a href="../index.html">← Giochi</a><h1>Parola segreta</h1><span></span></header>
-<p class="help">Indovina la parola di 5 lettere in 10 tentativi. Dopo ogni prova vedi 🎯 quante lettere sono al posto giusto e 🔁 quante ci sono ma in un altro posto. Tocca una lettera già usata per barrarla.</p>
+<header><a href="../index.html">← Giochi</a><h1>Parola segreta</h1>
+<select id="len" aria-label="Lunghezza"><option value="5">5 lettere</option><option value="6">6 lettere</option><option value="7">7 lettere</option></select></header>
+<p class="help">La prima lettera è già scritta. 🟩 lettera giusta al posto giusto, 🟨 lettera presente ma in un altro posto, ⬜ lettera assente.</p>
 <div id="rows"></div>
 <p class="status" id="st"></p>
 <div id="kb"></div>
 <p><button id="new">Nuova parola</button></p>
 <script>
-const W=`amico banca barca bocca borsa bosco calma campo carta cielo cuore dente donna fiore fuoco gatto gioco grano latte libro luogo mondo monte notte nuovo pasta penna piano piede pollo porta prato punto rosso sasso scala segno sedia sogno spada stato tempo terra testa torre treno vento verde vetro vespa zebra zucca acqua aereo amore birra canto capra cervo colpo corda corpo costa cuoco festa fiume forno frase fungo gesto gioia gonna lampo lente letto madre mappa mente miele nonna nonno padre palla parco parte pesce piuma pizza ponte radio regno ruota salsa scopa serra sfida sorte spina sport tasto tazza tenda tigre tondo torta valle vasca verso viola vista volpe zaino`.split(' ');
-const $=id=>document.getElementById(id),TRIES=10;
+const WORDS=`amico banca barca bocca borsa bosco calma campo carta cielo cuore dente donna fiore fuoco gatto gioco grano latte libro luogo mondo monte notte nuovo pasta penna piano piede pollo porta prato punto rosso sasso scala segno sedia sogno spada stato tempo terra testa torre treno vento verde vetro vespa zebra zucca acqua aereo amore birra canto capra cervo colpo corda corpo costa cuoco festa fiume forno frase fungo gesto gioia gonna lampo lente letto madre mappa mente miele nonna nonno padre palla parco parte pesce piuma pizza ponte radio regno ruota salsa scopa serra sfida sorte spina sport tasto tazza tenda tigre tondo torta valle vasca verso viola vista volpe zaino
+gelato ananas matita medusa limone lingua scarpa stella tromba musica bianco giallo scuola strada pietra occhio foglia nuvola cavolo panino sabbia cucina tavolo camino sapone chiave tesoro regalo pagina farina salame patata carota balena pecora maiale parola numero colore estate domani giorno minuto cugino spazio
+cuscino valigia violino tamburo canguro fragola vulcano pianeta delfino ricetta lavagna zanzara giraffa rivista cavallo gallina fumetto sorriso viaggio inverno autunno secondo sorella maestro dottore pittore formica gattino palazzo`.split(/\s+/);
+const $=id=>document.getElementById(id),RANK={no:1,in:2,ok:3};
 function score(g,s){
-  let ex=0,common=0;const cnt={};
-  for(let i=0;i<5;i++){if(g[i]===s[i])ex++;cnt[s[i]]=(cnt[s[i]]||0)+1}
-  for(const ch of g)if(cnt[ch]>0){cnt[ch]--;common++}
-  return[ex,common-ex]}
-console.assert(score('palla','pasta')+''==='3,0'&&score('carta','tarca')+''==='3,2'&&W.every(w=>w.length===5),'parola: self-check fallito');
-let secret,guesses,typed,over;const crossed=new Set();
+  const res=Array(s.length).fill('no'),left={};
+  for(let i=0;i<s.length;i++)if(g[i]===s[i])res[i]='ok';else left[s[i]]=(left[s[i]]||0)+1;
+  for(let i=0;i<s.length;i++)if(res[i]!=='ok'&&left[g[i]]>0){res[i]='in';left[g[i]]--}
+  return res}
+console.assert(score('palla','pasta')+''==='ok,ok,no,no,ok'&&score('carta','tarca')+''==='in,ok,ok,in,ok','parola: self-check fallito');
+let secret,n,tries,guesses,typed,over,keyState;
 const keys={};
 ['qwertyuiop','asdfghjkl','⏎zxcvbnm⌫'].forEach(row=>{
   const d=document.createElement('div');
@@ -41,29 +45,37 @@ const keys={};
     b.textContent=ch==='⏎'?'invio':ch;b.setAttribute('aria-label',ch==='⏎'?'invio':ch==='⌫'?'cancella':ch);
     b.onclick=()=>key(ch);keys[ch]=b;d.append(b)}
   $('kb').append(d)});
-function tile(ch){const t=document.createElement('span');t.className='t'+(crossed.has(ch)?' no':'');t.textContent=ch;
-  if(ch.trim())t.onclick=()=>{crossed.has(ch)?crossed.delete(ch):crossed.add(ch);draw()};return t}
+function row(word,res){
+  const r=document.createElement('div');r.className='r';
+  [...word.padEnd(n,' ')].forEach((c,i)=>{const t=document.createElement('span');t.className='t '+(res?res[i]:'');t.textContent=c;r.append(t)});
+  return r}
 function draw(){
-  $('rows').replaceChildren(...guesses.map(([w,[e,p]])=>{const r=document.createElement('div');r.className='r';
-    [...w].forEach(c=>r.append(tile(c)));const s=document.createElement('span');s.className='s';s.textContent=`🎯${e} 🔁${p}`;r.append(s);return r}));
-  if(!over){const r=document.createElement('div');r.className='r';[...typed.padEnd(5,' ')].forEach(c=>r.append(tile(c)));$('rows').append(r)}
-  for(const ch in keys)keys[ch].classList.toggle('no',crossed.has(ch))}
+  const rows=guesses.map(([w,res])=>row(w,res));
+  if(!over)rows.push(row(typed));
+  for(let i=rows.length;i<tries;i++)rows.push(row(''));
+  $('rows').replaceChildren(...rows);
+  for(const ch in keys)keys[ch].className='k'+(ch==='⏎'||ch==='⌫'?' wide':'')+(keyState[ch]?' '+keyState[ch]:'')}
 function key(ch){
   if(over)return;
-  if(ch==='⌫')typed=typed.slice(0,-1);
+  if(ch==='⌫'){if(typed.length>1)typed=typed.slice(0,-1)}
   else if(ch==='⏎'){
-    if(typed.length<5)return void($('st').textContent='Servono 5 lettere');
-    const sc=score(typed,secret);guesses.push([typed,sc]);typed='';
-    if(sc[0]===5){over=true;$('st').textContent=`Trovata in ${guesses.length} tentativi! 🎉`}
-    else if(guesses.length===TRIES){over=true;$('st').textContent=`Era "${secret.toUpperCase()}"`}
-    else $('st').textContent=`Tentativi rimasti: ${TRIES-guesses.length}`}
-  else if(typed.length<5)typed+=ch;
+    if(typed.length<n)return void($('st').textContent=`Servono ${n} lettere`);
+    const res=score(typed,secret);guesses.push([typed,res]);
+    [...typed].forEach((c,i)=>{if(!keyState[c]||RANK[res[i]]>RANK[keyState[c]])keyState[c]=res[i]});
+    if(typed===secret){over=true;$('st').textContent=`Trovata in ${guesses.length} tentativi! 🎉`}
+    else if(guesses.length===tries){over=true;$('st').textContent=`Era "${secret.toUpperCase()}"`}
+    else $('st').textContent=`Tentativi rimasti: ${tries-guesses.length}`;
+    typed=secret[0]}
+  else if(typed.length<n)typed+=ch;
   draw()}
 document.addEventListener('keydown',e=>{
   if(e.ctrlKey||e.metaKey||e.altKey)return;
   if(e.key==='Enter')key('⏎');else if(e.key==='Backspace')key('⌫');else if(/^[a-z]$/i.test(e.key))key(e.key.toLowerCase())});
-function newGame(){secret=W[Math.random()*W.length|0];guesses=[];typed='';over=false;crossed.clear();$('st').textContent=`Tentativi: ${TRIES}`;draw()}
-$('new').onclick=newGame;newGame();
+function newGame(){
+  n=+$('len').value;tries=n+1;const pool=WORDS.filter(w=>w.length===n);
+  secret=pool[Math.random()*pool.length|0];guesses=[];typed=secret[0];over=false;keyState={};
+  $('st').textContent=`Tentativi: ${tries}`;draw();$('len').blur()}
+$('new').onclick=$('len').onchange=newGame;newGame();
 </script>
 </body>
 </html>
