@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Impiccato · Ascanio's Games</title>
+<link rel="stylesheet" href="../style.css">
+<style>
+svg{width:160px;height:180px;stroke:var(--fg);stroke-width:4;fill:none;stroke-linecap:round}
+#w{font-size:2rem;letter-spacing:.3em;font-weight:700;text-transform:uppercase;text-align:center}
+#kb{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;width:min(96vw,480px)}
+#kb button{width:40px;padding:10px 0;text-transform:uppercase;font-weight:600}
+#kb .no{background:var(--line)}
+#kb .yes{background:var(--ok);color:#fff}
+</style>
+</head>
+<body>
+<header><a href="../index.html">← Giochi</a><h1>Impiccato</h1><span></span></header>
+<svg viewBox="0 0 160 180" aria-hidden="true">
+<path d="M10 170H90M40 170V10H110V30"/>
+<g id="man"><circle cx="110" cy="45" r="15"/><path d="M110 60V110"/><path d="M110 75L85 95"/><path d="M110 75L135 95"/><path d="M110 110L90 145"/><path d="M110 110L130 145"/></g>
+</svg>
+<p id="w"></p>
+<p class="status" id="st"></p>
+<div id="kb"></div>
+<p><button id="new">Nuova parola</button></p>
+<script>
+const W=`gelato montagna farfalla ombrello biscotto chitarra elefante bicicletta finestra pomodoro calendario cioccolato dinosauro computer giraffa telefono astronauta pinguino castello tartaruga arcobaleno vulcano coccodrillo spiaggia formaggio lampadina orologio pianeta scoiattolo ananas fragola zanzara canguro medusa delfino pagliaccio ricetta cuscino lavagna matita quaderno valigia trombone violino tamburo`.split(' ');
+const $=id=>document.getElementById(id),MAX=6,parts=[...$('man').children];
+let word,guessed,errors,over;
+const keys=[...'abcdefghijklmnopqrstuvwxyz'].map(ch=>{const b=document.createElement('button');b.textContent=ch;b.onclick=()=>guess(ch);$('kb').append(b);return b});
+function draw(){
+  $('w').textContent=[...word].map(c=>guessed.has(c)?c:'_').join('');
+  parts.forEach((p,i)=>p.style.display=i<errors?'':'none');
+  keys.forEach(b=>{const c=b.textContent;b.disabled=over||guessed.has(c);b.className=guessed.has(c)?(word.includes(c)?'yes':'no'):''})}
+function guess(c){
+  if(over||guessed.has(c))return;guessed.add(c);if(!word.includes(c))errors++;
+  if([...word].every(x=>guessed.has(x))){over=true;$('st').textContent='Salvo! 🎉'}
+  else if(errors===MAX){over=true;$('st').textContent=`Era "${word.toUpperCase()}"`;word.split('').forEach(x=>guessed.add(x))}
+  else $('st').textContent=`Errori: ${errors}/${MAX}`;
+  draw()}
+document.addEventListener('keydown',e=>{if(!e.ctrlKey&&!e.metaKey&&/^[a-z]$/i.test(e.key))guess(e.key.toLowerCase())});
+function newGame(){word=W[Math.random()*W.length|0];guessed=new Set();errors=0;over=false;$('st').textContent=`Errori: 0/${MAX}`;draw()}
+$('new').onclick=newGame;newGame();
+</script>
+</body>
+</html>

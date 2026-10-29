@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quattro in fila · Ascanio's Games</title>
+<link rel="stylesheet" href="../style.css">
+<style>
+#b{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;width:min(94vw,450px);padding:8px;background:#2b59c3;border-radius:12px}
+#b button{aspect-ratio:1;border-radius:50%;padding:0;border:none;background:var(--bg)}
+#b .R{background:#e63946}
+#b .Y{background:#ffd166}
+</style>
+</head>
+<body>
+<header><a href="../index.html">← Giochi</a><h1>Quattro in fila</h1>
+<select id="mode" aria-label="Modalità"><option value="cpu">vs Computer</option><option value="2p">2 giocatori</option></select></header>
+<div id="b"></div>
+<p class="status" id="st"></p>
+<button id="again">Nuova partita</button>
+<script>
+const $=id=>document.getElementById(id),C=7,R=6,mode=$('mode'),NAME={R:'🔴 Rosso',Y:'🟡 Giallo'};
+let g,turn,over,gen=0;
+const cells=[...Array(C*R)].map((_,i)=>{const b=document.createElement('button');b.setAttribute('aria-label','colonna '+(i%C+1));b.onclick=()=>human(i%C);$('b').append(b);return b});
+const row=(b,c)=>{for(let r=R-1;r>=0;r--)if(!b[r*C+c])return r;return -1};
+function wins(b,i){
+  const p=b[i],r=i/C|0,c=i%C;
+  return[[0,1],[1,0],[1,1],[1,-1]].some(([dr,dc])=>{
+    let n=1;for(const s of[1,-1])for(let k=1;k<4;k++){const rr=r+dr*k*s,cc=c+dc*k*s;if(rr<0||rr>=R||cc<0||cc>=C||b[rr*C+cc]!==p)break;n++}
+    return n>=4})}
+// shortcut: IA a una mossa di profondità (vince, blocca, evita trappole); per un avversario più forte usare minimax
+function cpu(){
+  const free=[...Array(C).keys()].filter(c=>row(g,c)>=0),try_=(c,p)=>{const b=[...g],i=row(b,c)*C+c;b[i]=p;return[b,i]};
+  for(const p of['Y','R'])for(const c of free){const[b,i]=try_(c,p);if(wins(b,i))return c}
+  const safe=free.filter(c=>{const[b]=try_(c,'Y');return free.every(c2=>{const r2=row(b,c2);if(r2<0)return true;b[r2*C+c2]='R';const w=wins(b,r2*C+c2);b[r2*C+c2]=0;return!w})});
+  const pool=safe.length?safe:free;
+  return pool.sort((a,b)=>Math.abs(a-3)-Math.abs(b-3)+Math.random()-.5)[0]}
+function drop(c){
+  const r=row(g,c);if(r<0)return false;const i=r*C+c;g[i]=turn;
+  if(wins(g,i)){over=true;$('st').textContent=`Vince ${NAME[turn]}!`}
+  else if(!g.includes(0)){over=true;$('st').textContent='Pareggio!'}
+  else{turn=turn==='R'?'Y':'R';$('st').textContent=`Tocca a ${NAME[turn]}`}
+  cells.forEach((b,j)=>b.className=g[j]||'');return true}
+function human(c){
+  if(over||(mode.value==='cpu'&&turn==='Y')||!drop(c))return;
+  if(!over&&mode.value==='cpu'){const k=gen;setTimeout(()=>{if(k===gen)drop(cpu())},350)}}
+function reset(){gen++;g=Array(C*R).fill(0);turn='R';over=false;cells.forEach(b=>b.className='');$('st').textContent=`Tocca a ${NAME.R}`}
+$('again').onclick=reset;mode.onchange=reset;reset();
+</script>
+</body>
+</html>

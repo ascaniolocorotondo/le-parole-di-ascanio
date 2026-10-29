@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tris · Ascanio's Games</title>
+<link rel="stylesheet" href="../style.css">
+<style>
+#b{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:min(90vw,360px)}
+#b button{aspect-ratio:1;font-size:3rem;font-weight:700;padding:0}
+</style>
+</head>
+<body>
+<header><a href="../index.html">← Giochi</a><h1>Tris</h1>
+<select id="mode" aria-label="Modalità"><option value="cpu">vs Computer</option><option value="2p">2 giocatori</option></select></header>
+<div id="b"></div>
+<p class="status" id="st"></p>
+<button id="again">Nuova partita</button>
+<script>
+const L=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+const $=id=>document.getElementById(id),mode=$('mode');
+let g,turn,over,gen=0;
+const cells=[...Array(9)].map((_,i)=>{const c=document.createElement('button');c.setAttribute('aria-label','casella '+(i+1));c.onclick=()=>play(i);$('b').append(c);return c});
+function winner(b){for(const[a,c,d]of L)if(b[a]&&b[a]===b[c]&&b[a]===b[d])return b[a];return b.includes('')?null:'='}
+function minimax(b,p){
+  const w=winner(b);if(w)return{s:w==='O'?1:w==='X'?-1:0};
+  let best={s:p==='O'?-2:2};
+  b.forEach((v,i)=>{if(v)return;b[i]=p;const s=minimax(b,p==='O'?'X':'O').s;b[i]='';if(p==='O'?s>best.s:s<best.s)best={s,i}});
+  return best}
+function draw(){
+  cells.forEach((c,i)=>{c.textContent=g[i];c.style.color=g[i]==='X'?'var(--accent)':'var(--ok)'});
+  const w=winner(g);over=!!w;$('st').textContent=w==='='?'Pareggio!':w?`Vince ${w}!`:`Tocca a ${turn}`}
+function play(i){
+  if(over||g[i]||(mode.value==='cpu'&&turn==='O'))return;
+  g[i]=turn;turn=turn==='X'?'O':'X';draw();
+  if(over||mode.value!=='cpu')return;
+  const free=g.map((v,j)=>v?-1:j).filter(j=>j>=0),k=gen;
+  // 20% mossa casuale: altrimenti il computer è imbattibile
+  const j=Math.random()<.2?free[Math.random()*free.length|0]:minimax(g,'O').i;
+  setTimeout(()=>{if(k!==gen)return;g[j]='O';turn='X';draw()},300)}
+function reset(){gen++;g=Array(9).fill('');turn='X';draw()}
+$('again').onclick=reset;mode.onchange=reset;reset();
+</script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Serpente · Ascanio's Games</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<header><a href="../index.html">← Giochi</a><h1>Serpente</h1><span></span></header>
+<div class="bar"><span>Punti: <b id="pts">0</b></span><span>Record: <b id="best">0</b></span></div>
+<p class="status" id="st"></p>
+<canvas id="c" width="400" height="400" style="width:min(92vw,400px)"></canvas>
+<p class="help">Frecce o WASD sul computer, swipe sul campo dal telefono.</p>
+<button id="new">Ricomincia</button>
+<script>
+const $=id=>document.getElementById(id),N=20,S=20,cv=$('c'),ctx=cv.getContext('2d');
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v);
+let snake,dir,next,food,pts,loop,alive,best=0;
+try{best=+localStorage.getItem('serpente')||0}catch{}
+function placeFood(){do food={x:Math.random()*N|0,y:Math.random()*N|0};while(snake.some(s=>s.x===food.x&&s.y===food.y))}
+function draw(){
+  ctx.clearRect(0,0,400,400);
+  ctx.fillStyle=css('--accent');ctx.beginPath();ctx.arc(food.x*S+S/2,food.y*S+S/2,S/2-2,0,7);ctx.fill();
+  ctx.fillStyle=css('--ok');snake.forEach((s,i)=>{ctx.globalAlpha=i?.8:1;ctx.fillRect(s.x*S+1,s.y*S+1,S-2,S-2)});ctx.globalAlpha=1;
+  $('pts').textContent=pts;$('best').textContent=best}
+function step(){
+  dir=next;const h={x:snake[0].x+dir.x,y:snake[0].y+dir.y},eat=h.x===food.x&&h.y===food.y;
+  if(!eat)snake.pop();
+  if(h.x<0||h.y<0||h.x>=N||h.y>=N||snake.some(s=>s.x===h.x&&s.y===h.y)){
+    alive=false;if(pts>best){best=pts;try{localStorage.setItem('serpente',best)}catch{}}
+    $('st').textContent=`Game over! ${pts} punti`;return draw()}
+  snake.unshift(h);if(eat){pts++;placeFood()}
+  draw();loop=setTimeout(step,Math.max(60,150-pts*4))}
+function turn(x,y){
+  if(!alive)return;
+  if(x===-dir.x&&y===-dir.y)return;
+  next={x,y};if(!loop){$('st').textContent='';step()}}
+function reset(){clearTimeout(loop);loop=null;alive=true;pts=0;snake=[{x:10,y:10},{x:9,y:10},{x:8,y:10}];dir=next={x:1,y:0};placeFood();
+  $('st').textContent='Premi una freccia o fai swipe per partire';draw()}
+const K={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],w:[0,-1],s:[0,1],a:[-1,0],d:[1,0]};
+document.addEventListener('keydown',e=>{const k=K[e.key];if(k){e.preventDefault();turn(...k)}});
+let t0;
+cv.addEventListener('touchstart',e=>{t0=e.touches[0]},{passive:true});
+cv.addEventListener('touchend',e=>{
+  const t=e.changedTouches[0],dx=t.clientX-t0.clientX,dy=t.clientY-t0.clientY;
+  if(Math.max(Math.abs(dx),Math.abs(dy))<20)return;
+  Math.abs(dx)>Math.abs(dy)?turn(Math.sign(dx),0):turn(0,Math.sign(dy))});
+$('new').onclick=reset;reset();
+</script>
+</body>
+</html>

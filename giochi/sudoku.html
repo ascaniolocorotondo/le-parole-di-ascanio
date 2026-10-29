@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sudoku · Ascanio's Games</title>
+<link rel="stylesheet" href="../style.css">
+<style>
+#g{display:grid;grid-template-columns:repeat(9,1fr);width:min(94vw,450px);border:2px solid var(--fg)}
+#g button{aspect-ratio:1;padding:0;border-radius:0;border:1px solid var(--line);font-size:clamp(1rem,5vw,1.5rem);color:var(--accent)}
+#g .br{border-right:2px solid var(--fg)}
+#g .bb{border-bottom:2px solid var(--fg)}
+#g .fix{color:var(--fg);font-weight:700}
+#g .same{background:color-mix(in srgb,var(--ok) 20%,var(--card))}
+#g .sel{background:color-mix(in srgb,var(--warn) 50%,var(--card))}
+#g .err{color:var(--bad);text-decoration:underline}
+#pad{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;width:min(94vw,450px);margin-top:12px}
+#pad button{padding:12px 0;font-size:1.2rem}
+</style>
+</head>
+<body>
+<header><a href="../index.html">← Giochi</a><h1>Sudoku</h1>
+<select id="lvl" aria-label="Difficoltà"><option value="38">Facile</option><option value="46">Medio</option><option value="53">Difficile</option></select></header>
+<div id="g"></div>
+<div id="pad"></div>
+<p class="status" id="st"></p>
+<button id="new">Nuova partita</button>
+<script>
+const $=id=>document.getElementById(id),D=[1,2,3,4,5,6,7,8,9];
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+function ok(g,i,n){
+  const r=i/9|0,c=i%9,br=r-r%3,bc=c-c%3;
+  for(let k=0;k<9;k++)if(g[r*9+k]===n||g[k*9+c]===n||g[(br+(k/3|0))*9+bc+k%3]===n)return false;
+  return true}
+function fill(g){const i=g.indexOf(0);if(i<0)return true;for(const n of shuffle([...D]))if(ok(g,i,n)){g[i]=n;if(fill(g))return true}g[i]=0;return false}
+function count(g,lim){const i=g.indexOf(0);if(i<0)return 1;let t=0;for(let n=1;n<=9&&t<lim;n++)if(ok(g,i,n)){g[i]=n;t+=count(g,lim-t)}g[i]=0;return t}
+let sol,cur,fixed,sel=-1;
+const cells=[...Array(81)].map((_,i)=>{
+  const b=document.createElement('button');
+  if(i%9%3===2&&i%9<8)b.classList.add('br');if((i/9|0)%3===2&&i<72)b.classList.add('bb');
+  b.onclick=()=>{sel=i;draw()};$('g').append(b);return b});
+[...D,0].forEach(n=>{const b=document.createElement('button');b.textContent=n||'⌫';b.onclick=()=>put(n);$('pad').append(b)});
+function draw(){
+  cells.forEach((b,i)=>{
+    b.textContent=cur[i]||'';b.setAttribute('aria-label',`riga ${(i/9|0)+1} colonna ${i%9+1} ${cur[i]||'vuota'}`);
+    b.classList.toggle('fix',fixed[i]);b.classList.toggle('sel',i===sel);
+    b.classList.toggle('same',sel>=0&&cur[sel]>0&&cur[i]===cur[sel]&&i!==sel);
+    b.classList.toggle('err',cur[i]>0&&cur[i]!==sol[i])})}
+function put(n){
+  if(sel<0||fixed[sel])return;cur[sel]=n;draw();
+  if(cur.every((v,i)=>v===sol[i]))$('st').textContent='Risolto! 🎉'}
+function newGame(){
+  $('st').textContent='';sol=Array(81).fill(0);fill(sol);
+  console.assert(sol.every((n,i)=>{const g=[...sol];g[i]=0;return ok(g,i,n)}),'soluzione non valida');
+  cur=[...sol];let removed=0;const want=+$('lvl').value;
+  for(const i of shuffle([...Array(81).keys()])){
+    if(removed===want)break;
+    const v=cur[i];cur[i]=0;
+    if(count(cur,2)===1)removed++;else cur[i]=v}  // tieni solo puzzle a soluzione unica
+  fixed=cur.map(v=>v>0);sel=-1;draw()}
+document.addEventListener('keydown',e=>{
+  if(e.key>='1'&&e.key<='9')put(+e.key);
+  else if(['Backspace','Delete','0'].includes(e.key))put(0);
+  else if(sel>=0&&e.key.startsWith('Arrow')){
+    e.preventDefault();const r=sel/9|0,c=sel%9;
+    sel={ArrowUp:(r+8)%9*9+c,ArrowDown:(r+1)%9*9+c,ArrowLeft:r*9+(c+8)%9,ArrowRight:r*9+(c+1)%9}[e.key];draw()}});
+$('new').onclick=$('lvl').onchange=newGame;newGame();
+</script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Campo minato · Ascanio's Games</title>
+<link rel="stylesheet" href="../style.css">
+<style>
+#g{display:grid;gap:2px;width:min(94vw,460px)}
+#g button{aspect-ratio:1;padding:0;border-radius:4px;font-weight:700;font-size:clamp(.8rem,4vw,1.2rem);background:var(--line);border:none}
+#g button.o{background:var(--card)}
+#flag.on{background:var(--warn);color:#000}
+</style>
+</head>
+<body>
+<header><a href="../index.html">← Giochi</a><h1>Campo minato</h1>
+<select id="lvl" aria-label="Difficoltà"><option value="9,10">Facile</option><option value="12,24">Medio</option><option value="14,40">Difficile</option></select></header>
+<div class="bar"><span>💣 <b id="left">0</b></span></div>
+<p class="status" id="st"></p>
+<div id="g"></div>
+<p class="row"><button id="flag">🚩 Bandierina: no</button><button id="new">Nuova partita</button></p>
+<p class="help">Sul computer: clic destro per la bandierina. Sul telefono: attiva il pulsante 🚩.</p>
+<script>
+const $=id=>document.getElementById(id),COL=['','#3a86ff','#2a9d8f','#e4572e','#7b61ff','#9d0208','#0096c7','#333','#888'];
+let N,M,mine,open,flag,cells,started,over,flagMode=false;
+const nb=i=>{const r=i/N|0,c=i%N,o=[];for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){const rr=r+dr,cc=c+dc;if((dr||dc)&&rr>=0&&cc>=0&&rr<N&&cc<N)o.push(rr*N+cc)}return o};
+const near=i=>nb(i).filter(j=>mine[j]).length;
+function lay(safe){ // le mine si piazzano dopo il primo tocco, che è sempre sicuro
+  const ban=new Set([safe,...nb(safe)]),spots=[...Array(N*N).keys()].filter(i=>!ban.has(i));
+  for(let k=0;k<M;k++){const j=k+(Math.random()*(spots.length-k)|0);[spots[k],spots[j]]=[spots[j],spots[k]];mine[spots[k]]=true}}
+function reveal(i){
+  const stack=[i];
+  while(stack.length){const j=stack.pop();if(open[j]||flag[j])continue;open[j]=true;if(!mine[j]&&!near(j))stack.push(...nb(j))}}
+function hit(i){
+  if(over||open[i])return;
+  if(flagMode)return toggle(i);
+  if(flag[i])return;
+  if(!started){started=true;lay(i)}
+  if(mine[i]){over=true;mine.forEach((m,j)=>{if(m)open[j]=true});$('st').textContent='Boom! 💥'}
+  else{reveal(i);if(open.filter(Boolean).length===N*N-M){over=true;$('st').textContent='Campo ripulito! 🎉'}}
+  draw()}
+function toggle(i){if(over||open[i])return;flag[i]=!flag[i];draw()}
+function draw(){
+  cells.forEach((b,i)=>{
+    b.classList.toggle('o',open[i]);const n=open[i]&&!mine[i]?near(i):0;
+    b.textContent=open[i]?(mine[i]?'💣':n||''):flag[i]?'🚩':'';b.style.color=COL[n];
+    b.setAttribute('aria-label',`riga ${(i/N|0)+1} colonna ${i%N+1}: `+(open[i]?(mine[i]?'mina':n||'vuota'):flag[i]?'bandierina':'coperta'))});
+  $('left').textContent=M-flag.filter(Boolean).length}
+function newGame(){
+  [N,M]=$('lvl').value.split(',').map(Number);mine=Array(N*N).fill(false);open=[...mine];flag=[...mine];started=over=false;$('st').textContent='';
+  $('g').style.gridTemplateColumns=`repeat(${N},1fr)`;
+  cells=[...Array(N*N)].map((_,i)=>{const b=document.createElement('button');b.onclick=()=>hit(i);b.oncontextmenu=e=>{e.preventDefault();toggle(i)};return b});
+  $('g').replaceChildren(...cells);draw()}
+$('flag').onclick=()=>{flagMode=!flagMode;$('flag').classList.toggle('on',flagMode);$('flag').textContent='🚩 Bandierina: '+(flagMode?'sì':'no')};
+$('new').onclick=$('lvl').onchange=newGame;newGame();
+</script>
+</body>
+</html>

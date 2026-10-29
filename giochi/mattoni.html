@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Spacca-mattoni · Ascanio's Games</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<header><a href="../index.html">← Giochi</a><h1>Spacca-mattoni</h1><span></span></header>
+<div class="bar"><span>Punti: <b id="pts">0</b></span><span>Vite: <b id="lives">3</b></span><span>Record: <b id="best">0</b></span></div>
+<p class="status" id="st">Tocca il campo per lanciare</p>
+<canvas id="c" width="400" height="500" style="width:min(92vw,400px)"></canvas>
+<p class="help">Muovi la racchetta col dito, col mouse o con le frecce. Tocca o premi spazio per lanciare.</p>
+<script>
+const $=id=>document.getElementById(id),cv=$('c'),ctx=cv.getContext('2d'),W=400,H=500,PW=80,COLS=8,ROWS=5,BW=W/COLS;
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v);
+const HUE=['#e63946','#f4a261','#e9c46a','#2a9d8f','#3a86ff'];
+let px,ball,bricks,pts=0,lives=3,level=1,stuck=true,best=0,keys={};
+try{best=+localStorage.getItem('mattoni')||0}catch{}
+function build(){bricks=[];for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)bricks.push({x:c*BW+2,y:40+r*22,c:HUE[r]})}
+function serve(){stuck=true;ball={x:px+PW/2,y:H-40,vx:0,vy:0}}
+function launch(){if(!stuck||!lives)return;stuck=false;const s=4+level*.6;ball.vx=s*(Math.random()-.5);ball.vy=-s;$('st').textContent=''}
+function hud(){$('pts').textContent=pts;$('lives').textContent=lives;$('best').textContent=best}
+function tick(){
+  if(keys.ArrowLeft)px-=7;if(keys.ArrowRight)px+=7;px=Math.max(0,Math.min(W-PW,px));
+  if(stuck){ball.x=px+PW/2}
+  else{
+    ball.x+=ball.vx;ball.y+=ball.vy;
+    if(ball.x<6||ball.x>W-6)ball.vx*=-1,ball.x=Math.max(6,Math.min(W-6,ball.x));
+    if(ball.y<6)ball.vy=Math.abs(ball.vy);
+    if(ball.vy>0&&ball.y>H-36&&ball.y<H-20&&ball.x>px-6&&ball.x<px+PW+6){
+      // l'angolo di rimbalzo dipende da dove la pallina colpisce la racchetta
+      const s=Math.hypot(ball.vx,ball.vy),a=((ball.x-px)/PW-.5)*2.2;ball.vx=s*Math.sin(a);ball.vy=-s*Math.cos(a)}
+    const hit=bricks.findIndex(b=>ball.x>b.x-6&&ball.x<b.x+BW-4+6&&ball.y>b.y-6&&ball.y<b.y+18+6);
+    if(hit>=0){bricks.splice(hit,1);ball.vy*=-1;pts+=10;
+      if(!bricks.length){level++;build();serve();$('st').textContent=`Livello ${level}! Tocca per lanciare`}}
+    if(ball.y>H){lives--;if(pts>best){best=pts;try{localStorage.setItem('mattoni',best)}catch{}}
+      if(lives){serve();$('st').textContent='Tocca per lanciare'}else{$('st').textContent=`Game over! ${pts} punti. Tocca per ricominciare`;ball.y=H+50;stuck=true}}
+    hud()}
+  ctx.clearRect(0,0,W,H);
+  bricks.forEach(b=>{ctx.fillStyle=b.c;ctx.fillRect(b.x,b.y,BW-4,18)});
+  ctx.fillStyle=css('--fg');ctx.fillRect(px,H-30,PW,10);
+  ctx.fillStyle=css('--accent');ctx.beginPath();ctx.arc(ball.x,ball.y,6,0,7);ctx.fill();
+  requestAnimationFrame(tick)}
+function restart(){pts=0;lives=3;level=1;px=(W-PW)/2;build();serve();hud()}
+function pointer(e){const r=cv.getBoundingClientRect();px=(e.clientX-r.left)/r.width*W-PW/2}
+cv.addEventListener('pointermove',pointer);
+cv.addEventListener('pointerdown',e=>{pointer(e);if(!lives)restart();else launch()});
+document.addEventListener('keydown',e=>{keys[e.key]=true;if(e.key===' '||e.key.startsWith('Arrow'))e.preventDefault();if(e.key===' '){if(!lives)restart();else launch()}});
+document.addEventListener('keyup',e=>keys[e.key]=false);
+restart();tick();
+</script>
+</body>
+</html>
